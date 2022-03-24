@@ -170,3 +170,9 @@ def build_tests(
             regen=regen,
         )
         setattr(clazz, test_name, test_method)
+
+
+def compare_package_results(expected, result):
+    result_packages = [r.to_dict() for r in result]
+    expected_packages = [e.to_dict() for e in expected]
+    assert result_packages == expected_packages

@@ -55,20 +55,20 @@ class OpamPackageData(models.PackageData):
 
 
 @attr.s()
-class OpamFile(OpamPackageData, models.PackageDataFile):
+class OpamFile(OpamPackageData, models.DatafileHandler):
 
-    file_patterns = ('*opam',)
+    path_patterns = ('*opam',)
     extensions = ('.opam',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('opam')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

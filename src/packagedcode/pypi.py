@@ -100,19 +100,19 @@ meta_file_names = 'PKG-INFO', 'METADATA',
 
 
 @attr.s()
-class MetadataFile(PythonPackageData, models.PackageDataFile):
+class MetadataFile(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = meta_file_names
+    path_patterns = meta_file_names
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith(meta_file_names)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -154,24 +154,22 @@ def parse_metadata(cls, location):
     )
 
 
-bdist_file_suffixes = '.whl', '.egg',
-
-
+# FIXME: eggs and wheels are rather different
 @attr.s()
-class BinaryDistArchive(PythonPackageData, models.PackageDataFile):
+class BinaryDistArchive(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = ('*.whl', '*.egg',)
-    extensions = bdist_file_suffixes
+    path_patterns = ('*.whl', '*.egg',)
+    extensions = '.whl', '.egg',
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
-        return filetype.is_file(location) and location.endswith(bdist_file_suffixes)
+        return filetype.is_file(location) and location.endswith(cls.extensions)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -185,24 +183,22 @@ class BinaryDistArchive(PythonPackageData, models.PackageDataFile):
                         yield parse_metadata(cls, metapath)
 
 
-sdist_file_suffixes = '.tar.gz', '.tar.bz2', '.zip',
-
-
 @attr.s()
-class SourceDistArchive(PythonPackageData, models.PackageDataFile):
+class SourceDistArchive(PythonPackageData, models.DatafileHandler):
     # TODO: we are ignoing sdists such as pex, pyz, etc.
-    file_patterns = ('*.tar.gz', '*.tar.bz2', '*.zip',)
-    extensions = sdist_file_suffixes
+    path_patterns = ('*.tar.gz', '*.tar.bz2', '*.zip',)
+    extensions = '.tar.gz', '.tar.bz2', '.zip',
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
-        return filetype.is_file(location) and location.endswith(sdist_file_suffixes)
+        # TODO: there is more to it than this... based on actual listing of files inside
+        return filetype.is_file(location) and location.endswith(cls.extensions)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -228,20 +224,20 @@ class SourceDistArchive(PythonPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class SetupPy(PythonPackageData, models.PackageDataFile):
+class SetupPy(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = ('setup.py',)
+    path_patterns = ('setup.py',)
     extensions = ('.py',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('setup.py')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -271,9 +267,9 @@ class SetupPy(PythonPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class DependencyFile(PythonPackageData, models.PackageDataFile):
+class DependencyFile(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = (
+    path_patterns = (
         'Pipfile',
         'conda.yml',
         'setup.cfg',
@@ -281,13 +277,13 @@ class DependencyFile(PythonPackageData, models.PackageDataFile):
     )
 
     @classmethod
-    def is_package_data_file(cls, location):
-        for file_pattern in cls.file_patterns:
+    def is_datafile(cls, location):
+        for file_pattern in cls.path_patterns:
             if filetype.is_file(location) and location.endswith(file_pattern):
                 return True
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -306,20 +302,20 @@ class DependencyFile(PythonPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class PipfileLock(PythonPackageData, models.PackageDataFile):
+class PipfileLock(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = ('Pipfile.lock',)
+    path_patterns = ('Pipfile.lock',)
     extensions = ('.lock',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('Pipfile.lock')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -343,9 +339,9 @@ class PipfileLock(PythonPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class RequirementsFile(PythonPackageData, models.PackageDataFile):
+class RequirementsFile(PythonPackageData, models.DatafileHandler):
 
-    file_patterns = (
+    path_patterns = (
         '*requirement*.txt',
         '*requirement*.pip',
         '*requirement*.in',
@@ -356,14 +352,14 @@ class RequirementsFile(PythonPackageData, models.PackageDataFile):
     )
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the ``location`` is likely a pip requirements file.
         """
         return filetype.is_file(location) and is_requirements_file(location)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

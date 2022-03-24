@@ -44,17 +44,17 @@ class MicrosoftUpdatePackage(models.PackageData):
 
 
 @attr.s()
-class MicrosoftUpdateManifest(MicrosoftUpdatePackage, models.PackageDataFile):
+class MicrosoftUpdateManifest(MicrosoftUpdatePackage, models.DatafileHandler):
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('.mum')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -70,9 +70,8 @@ class MicrosoftUpdateManifest(MicrosoftUpdatePackage, models.PackageDataFile):
         assembly = parsed.get('assembly', {})
         description = assembly.get('@description', '')
         company = assembly.get('@company', '')
-        copyright = assembly.get('@copyright', '')
+        copyrght = assembly.get('@copyright', '')
         support_url = assembly.get('@supportInformation', '')
-
         assembly_identity = assembly.get('assemblyIdentity', {})
         name = assembly_identity.get('@name', '')
         version = assembly_identity.get('@version', '')
@@ -93,5 +92,5 @@ class MicrosoftUpdateManifest(MicrosoftUpdatePackage, models.PackageDataFile):
             description=description,
             homepage_url=support_url,
             parties=parties,
-            copyright=copyright,
+            copyright=copyrght,
         )

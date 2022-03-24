@@ -344,7 +344,7 @@ SPEC_SUB_DEPS = re.compile(
 PLATS = re.compile('^  (?P<platform>.*)$').match
 
 
-class GemfileLockParser(object):
+class GemfileLockParser:
     """
     Parse a Gemfile.lock. Code originally derived from Bundler's
     /bundler/lib/bundler/lockfile_parser.rb parser

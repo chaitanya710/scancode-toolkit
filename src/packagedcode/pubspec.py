@@ -107,20 +107,20 @@ def compute_normalized_license(declared_license, location=None):
 
 
 @attr.s()
-class PubspecYaml(PubspecPackageData, models.PackageDataFile):
+class PubspecYaml(PubspecPackageData, models.DatafileHandler):
 
-    file_patterns = ('*pubspec.yaml',)
+    path_patterns = ('*pubspec.yaml',)
     extensions = ('.yaml',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return file_endswith(location, 'pubspec.yaml')
 
     @classmethod
-    def recognize(cls, location, compute_normalized_license=False):
+    def parse(cls, location, compute_normalized_license=False):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -142,20 +142,20 @@ def file_endswith(location, endswith):
 
 
 @attr.s()
-class PubspecLock(PubspecPackageData, models.PackageDataFile):
+class PubspecLock(PubspecPackageData, models.DatafileHandler):
 
-    file_patterns = ('*pubspec.lock',)
+    path_patterns = ('*pubspec.lock',)
     extensions = ('.lock',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return file_endswith(location, 'pubspec.lock')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

@@ -258,7 +258,7 @@ def concat(mapping, *keys):
 
 
 @attr.s()
-class WindowsExecutable(WindowsExecutableData, models.PackageDataFile):
+class WindowsExecutable(WindowsExecutableData, models.DatafileHandler):
     extensions = (
         '.exe',
         '.dll',
@@ -279,7 +279,7 @@ class WindowsExecutable(WindowsExecutableData, models.PackageDataFile):
     )
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -287,7 +287,7 @@ class WindowsExecutable(WindowsExecutableData, models.PackageDataFile):
         return filetype.is_file(location) and T.is_winexe
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

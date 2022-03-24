@@ -117,20 +117,19 @@ class CocoapodsPackageData(models.PackageData):
 
 
 @attr.s()
-class Podspec(CocoapodsPackageData, models.PackageDataFile):
+class Podspec(CocoapodsPackageData, models.DatafileHandler):
 
-    file_patterns = ('*.podspec',)
-    extensions = ('.podspec',)
+    path_patterns = ('*.podspec',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('.podspec')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -176,20 +175,20 @@ class Podspec(CocoapodsPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class PodfileLock(CocoapodsPackageData, models.PackageDataFile):
+class PodfileLock(CocoapodsPackageData, models.DatafileHandler):
 
-    file_patterns = ('*podfile.lock',)
+    path_patterns = ('*podfile.lock',)
     extensions = ('.lock',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return (filetype.is_file(location) and location.endswith(('podfile.lock', 'Podfile.lock')))
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -262,20 +261,20 @@ class PodfileLock(CocoapodsPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class PodspecJson(CocoapodsPackageData, models.PackageDataFile):
+class PodspecJson(CocoapodsPackageData, models.DatafileHandler):
 
-    file_patterns = ('*.podspec.json',)
+    path_patterns = ('*.podspec.json',)
     extensions = ('.json',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('.podspec.json')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -288,11 +287,11 @@ class PodspecJson(CocoapodsPackageData, models.PackageDataFile):
         description = data.get('description', '')
         homepage_url = data.get('homepage')
 
-        license = data.get('license')
-        if isinstance(license, dict):
-            declared_license = ' '.join(list(license.values()))
+        lic = data.get('license')
+        if isinstance(lic, dict):
+            declared_license = ' '.join(list(lic.values()))
         else:
-            declared_license = license
+            declared_license = lic
 
         source = data.get('source')
         vcs_url = None

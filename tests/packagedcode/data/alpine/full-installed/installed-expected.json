@@ -35,7 +35,6 @@
     "license_expression": "mit",
     "declared_license": "MIT",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/musl@1.1.24-r8"
     ],
@@ -100,7 +99,6 @@
     "license_expression": "gpl-2.0",
     "declared_license": "GPL-2.0-only",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/busybox@1.31.1-r16"
     ],
@@ -205,7 +203,6 @@
     "license_expression": "gpl-2.0",
     "declared_license": "GPL-2.0-only",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/alpine-baselayout@3.2.0-r6"
     ],
@@ -470,7 +467,6 @@
     "license_expression": "mit",
     "declared_license": "MIT",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/alpine-keys@2.2-r0"
     ],
@@ -679,7 +675,6 @@
     "license_expression": "openssl-ssleay",
     "declared_license": "OpenSSL",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/openssl@1.1.1g-r0"
     ],
@@ -824,7 +819,6 @@
     "license_expression": "openssl-ssleay",
     "declared_license": "OpenSSL",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/openssl@1.1.1g-r0"
     ],
@@ -889,7 +883,6 @@
     "license_expression": "mpl-2.0 AND gpl-2.0-plus",
     "declared_license": "MPL-2.0 GPL-2.0-or-later",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/ca-certificates@20191127-r2"
     ],
@@ -946,7 +939,6 @@
     "license_expression": "isc",
     "declared_license": "ISC",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/libtls-standalone@2.9.1-r1"
     ],
@@ -1021,7 +1013,6 @@
     "license_expression": "gpl-2.0",
     "declared_license": "GPL-2.0-only",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/busybox@1.31.1-r16"
     ],
@@ -1078,7 +1069,6 @@
     "license_expression": "zlib",
     "declared_license": "Zlib",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/zlib@1.2.11-r3"
     ],
@@ -1143,7 +1133,6 @@
     "license_expression": "gpl-2.0",
     "declared_license": "GPL-2.0-only",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/apk-tools@2.10.5-r1"
     ],
@@ -1200,7 +1189,6 @@
     "license_expression": "gpl-2.0",
     "declared_license": "GPL-2.0-only",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/pax-utils@1.2.6-r0"
     ],
@@ -1257,7 +1245,6 @@
     "license_expression": "mit AND bsd-new AND gpl-2.0-plus",
     "declared_license": "MIT BSD GPL2+",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/musl@1.1.24-r8"
     ],
@@ -1356,7 +1343,6 @@
     "license_expression": "bsd-simplified AND bsd-new",
     "declared_license": "BSD-2-Clause AND BSD-3-Clause",
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [
       "pkg:alpine/libc-dev@0.7.2-r3"
     ],

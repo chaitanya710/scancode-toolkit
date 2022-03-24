@@ -87,9 +87,11 @@ class EVR(namedtuple('EVR', 'epoch version release')):
     The RPM Epoch, Version, Release tuple.
     """
 
-    # note: the order of the named tuple is the sort order.
-    # But for creation we put the rarely used epoch last
     def __new__(self, version, release=None, epoch=None):
+        """
+        note: the sort order of the named tuple is the sort order.
+        But for creation we put the rarely used epoch last with a default to None.
+        """
         if epoch and epoch.strip() and not epoch.isdigit():
             raise ValueError('Invalid epoch: must be a number or empty.')
         if not version:
@@ -113,10 +115,6 @@ class EVR(namedtuple('EVR', 'epoch version release')):
 
 @attr.s()
 class RpmPackageData(models.PackageData):
-
-    filetypes = ('rpm ',)
-    mimetypes = ('application/x-rpm',)
-
     default_type = 'rpm'
 
     default_web_baseurl = None
@@ -126,19 +124,6 @@ class RpmPackageData(models.PackageData):
     def compute_normalized_license(self):
         _declared, detected = detect_declared_license(self.declared_license)
         return detected
-
-    def to_dict(self, _detailed=False, **kwargs):
-        data = models.PackageData.to_dict(self, **kwargs)
-        if _detailed:
-            #################################################
-            data['installed_files'] = [istf.to_dict() for istf in (self.installed_files or [])]
-            #################################################
-        else:
-            #################################################
-            # remove temporary fields
-            data.pop('installed_files', None)
-            #################################################
-        return data
 
 
 def get_installed_packages(root_dir, detect_licenses=False, **kwargs):
@@ -151,33 +136,40 @@ def get_installed_packages(root_dir, detect_licenses=False, **kwargs):
     # note that we also have file flags that can tell us which file is a license and doc.
 
     # dump the rpmdb to XMLish
-    xmlish_loc = rpm_installed.collPackageDataWithect_installed_rpmdb_xmlish_from_rootfs(root_dir)
+    xmlish_loc = rpm_installed.collect_installed_rpmdb_xmlish_from_rootfs(root_dir)
     return rpm_installed.parse_rpm_xmlish(xmlish_loc, detect_licenses=detect_licenses)
 
 
 @attr.s()
-class RpmManifest(RpmPackageData, models.PackageDataFile):
+class RpmSpecfileRecognizer(models.DatafileHandler):
 
-    file_patterns = ('*.spec',)
-    extensions = ('.rpm', '.srpm', '.mvl', '.vip',)
+    datatype = RpmPackageData
+    path_patterns = ('*.spec',)
+
+
+@attr.s()
+class RpmArchiveRecognizer(RpmPackageData, models.DatafileHandler):
+
+    datatype = RpmPackageData
+    path_patterns = ('*.rpm', '*.src.rpm', '*.srpm', '*.mvl', '*.vip',)
 
     @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return True if the file at ``location`` is likely a manifest of this type.
-        """
+    def is_datafile(cls, location):
+        ispdf = super(RpmSpecfileRecognizer, self).is_datafile(location)
+        if ispdf:
+            return True
         T = typecode.contenttype.get_type(location)
         return (filetype.is_file(location) and 'rpm' in T.filetype_file.lower())
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
-        Yield one or more Package manifest objects given a file ``location`` pointing to a
-        package archive, manifest or similar.
+        Yield one or more Package manifest objects given a file ``location``
+        pointing to an RPM package archive.
         """
         rpm_tags = get_rpm_tags(location, include_desc=True)
 
-        if TRACE: logger_debug('build_from_tags: rpm_tags', rpm_tags)
+        if TRACE: logger_debug('recognize: rpm_tags', rpm_tags)
         if not rpm_tags:
             return
 
@@ -217,7 +209,7 @@ class RpmManifest(RpmPackageData, models.PackageDataFile):
                 qualifiers=src_qualifiers
             ).to_string()
 
-            if TRACE: logger_debug('build_from_tags: source_rpm', src_purl)
+            if TRACE: logger_debug('recognize: source_rpm', src_purl)
             source_packages = [src_purl]
 
         parties = []
@@ -248,7 +240,7 @@ class RpmManifest(RpmPackageData, models.PackageDataFile):
                 declared_license=rpm_tags.license or None,
                 source_packages=source_packages,
             )
-            logger_debug('build_from_tags: data to create a package:\n', data)
+            logger_debug('recognize: data to create a package:\n', data)
 
         package = cls(
             name=name,
@@ -261,7 +253,7 @@ class RpmManifest(RpmPackageData, models.PackageDataFile):
         )
 
         if TRACE:
-            logger_debug('build_from_tags: created package:\n', package)
+            logger_debug('recognize: created package:\n', package)
 
         yield package
 
@@ -276,12 +268,13 @@ class RpmPackage(RpmPackageData, models.Package):
     @property
     def manifests(self):
         return [
-            RpmManifest
+            RpmSpecfileRecognizer,
         ]
 
 ############################################################################
 # FIXME: this license detection code is mostly copied from debian_copyright.py and alpine.py
 ############################################################################
+
 
 def detect_declared_license(declared):
     """

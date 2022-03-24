@@ -52,32 +52,30 @@ if TRACE:
 
 @attr.s()
 class RubyGemData(models.PackageData):
-    filetypes = ('.tar', 'tar archive',)
-    mimetypes = ('application/x-tar',)
     default_type = 'gem'
     default_primary_language = 'Ruby'
     default_web_baseurl = 'https://rubygems.org/gems/'
     default_download_baseurl = 'https://rubygems.org/downloads'
     default_api_baseurl = 'https://rubygems.org/api'
 
-    @classmethod
-    def get_package_root(cls, manifest_resource, codebase):
-        # FIXME: this can vary if we have a plain checkout or install vs. a .gem
-        # archive where we have "multiple" roots
-        if manifest_resource.name.endswith('.gem'):
-            return manifest_resource
-
-        if manifest_resource.name == 'metadata.gz-extract':
-            # first level is metadata.gz-extract/
-            parent = manifest_resource.parent(codebase)
-            # second level is actual .gem-extract/ directory
-            return parent.parent(codebase)
-
-        if manifest_resource.name.endswith(('.gemspec', 'Gemfile', 'Gemfile.lock',)):
-            return manifest_resource.parent(codebase)
-
-        # unknown?
-        return manifest_resource
+#     @classmethod
+#     def get_package_root(cls, manifest_resource, codebase):
+#         # FIXME: this can vary if we have a plain checkout or install vs. a .gem
+#         # archive where we have "multiple" roots
+#         if manifest_resource.name.endswith('.gem'):
+#             return manifest_resource
+# 
+#         if manifest_resource.name == 'metadata.gz-extract':
+#             # first level is metadata.gz-extract/
+#             parent = manifest_resource.parent(codebase)
+#             # second level is actual .gem-extract/ directory
+#             return parent.parent(codebase)
+# 
+#         if manifest_resource.name.endswith(('.gemspec', 'Gemfile', 'Gemfile.lock',)):
+#             return manifest_resource.parent(codebase)
+# 
+#         # unknown?
+#         return manifest_resource
 
     def compute_normalized_license(self):
         return compute_normalized_license(self.declared_license)
@@ -103,20 +101,24 @@ class RubyGemData(models.PackageData):
 
 
 @attr.s()
-class GemArchive(RubyGemData, models.PackageDataFile):
+class GemArchive(RubyGemData, models.DatafileHandler):
 
-    file_patterns = ('*.gem',)
+    path_patterns = ('*.gem',)
     extensions = ('.gem',)
+    filetypes = ('posix tar archive',)
+    mimetypes = ('application/x-tar',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
-        return filetype.is_file(location) and location.endswith('.gem')
+        #FIXME: use super implementation as this must be some archive too
+        
+        return filetype.is_file(location) and location.endswith(cls.extensions)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -127,20 +129,20 @@ class GemArchive(RubyGemData, models.PackageDataFile):
 
 
 @attr.s()
-class GemArchiveExtracted(RubyGemData, models.PackageDataFile):
+class GemArchiveExtracted(RubyGemData, models.DatafileHandler):
 
-    file_patterns = ('metadata.gz-extract',)
+    path_patterns = ('metadata.gz-extract',)
     extensions = ('.gz-extract',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('.gz-extract')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -152,20 +154,12 @@ class GemArchiveExtracted(RubyGemData, models.PackageDataFile):
 
 
 @attr.s()
-class GemSpec(RubyGemData, models.PackageDataFile):
+class GemSpec(RubyGemData, models.DatafileHandler):
 
-    file_patterns = ('*.gemspec',)
-    extensions = ('.gemspec',)
-
-    @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return True if the file at ``location`` is likely a manifest of this type.
-        """
-        return filetype.is_file(location) and location.endswith('.gemspec')
+    path_patterns = ('*.gemspec',)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -220,19 +214,12 @@ class GemSpec(RubyGemData, models.PackageDataFile):
 
 
 @attr.s()
-class Gemfile(RubyGemData, models.PackageDataFile):
+class Gemfile(RubyGemData, models.DatafileHandler):
 
-    file_patterns = ('Gemfile',)
-
-    @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return True if the file at ``location`` is likely a manifest of this type.
-        """
-        return filetype.is_file(location) and location.endswith('Gemfile')
+    path_patterns = ('Gemfile',)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -241,20 +228,12 @@ class Gemfile(RubyGemData, models.PackageDataFile):
         pass
 
 @attr.s()
-class GemfileLock(RubyGemData, models.PackageDataFile):
+class GemfileLock(RubyGemData, models.DatafileHandler):
 
-    file_patterns = ('Gemfile.lock',)
-    extensions = ('.lock',)
-
-    @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return True if the file at ``location`` is likely a manifest of this type.
-        """
-        return filetype.is_file(location) and location.endswith('Gemfile.lock')
+    path_patterns = ('Gemfile.lock',)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -662,7 +641,7 @@ def get_dependencies(dependencies):
         version_constraint = ', '.join(constraints)
 
         dep = models.DependentPackage(
-            purl=RubyGemData.create(name=name).purl,
+            purl=RubyGemData.from_dict(name=name).purl,
             extracted_requirement=version_constraint or None,
             scope=scope,
             is_runtime=is_runtime,

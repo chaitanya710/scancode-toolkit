@@ -91,6 +91,7 @@ def get_msi_info(location):
     installing the `packagedcode-msiinfo` plugin or by installing `msitools`
     through a package manager.
     """
+    # FIXME: what about the return code? we ignore it?
     rc, stdout, stderr = execute(
         cmd_loc=get_msiinfo_bin_location(),
         args=[
@@ -99,8 +100,7 @@ def get_msi_info(location):
         ],
     )
     if stderr:
-        error_message = f'Error encountered when reading MSI information from {location}: '
-        error_message = error_message + stderr
+        error_message = f'Error encountered when reading MSI information from {location}: {stderr}'
         raise MsiinfoException(error_message)
     return parse_msiinfo_suminfo_output(stdout)
 
@@ -168,13 +168,13 @@ def msi_parse(location):
 
 
 @attr.s()
-class MsiInstallerPackage(models.PackageData, models.PackageDataFile):
+class MsiInstallerPackage(models.PackageData, models.DatafileHandler):
     filetypes = ('msi installer',)
     mimetypes = ('application/x-msi',)
     extensions = ('.msi',)
     default_type = 'msi'
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         if on_linux:
             yield msi_parse(location)

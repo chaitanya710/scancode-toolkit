@@ -32,9 +32,9 @@ if TRACE:
 
 
 @attr.s()
-class DebianPackage(models.PackageData, models.PackageDataFile):
-    file_patterns = ('*.control',)
-    extensions = ('.deb',)
+class DebianPackageRecognizer(models.PackageData, models.DatafileHandler):
+    path_patterns = ('*.control',)
+    extensions = ('*.deb',)
     filetypes = ('debian binary package',)
     mimetypes = ('application/x-archive', 'application/vnd.debian.binary-package',)
     default_type = 'deb'
@@ -105,7 +105,7 @@ class DebianPackage(models.PackageData, models.PackageDataFile):
                     if path in ignored_root_dirs:
                         continue
 
-                    installed_file = models.PackageFile(path=path, md5=md5sum)
+                    installed_file = models.FileReference(path=path, md5=md5sum)
 
                     installed_files.append(installed_file)
                     directories.add(os.path.dirname(path))
@@ -128,7 +128,7 @@ class DebianPackage(models.PackageData, models.PackageDataFile):
                     if path in ignored_root_dirs:
                         continue
 
-                    installed_file = models.PackageFile(path=path, md5=md5sum)
+                    installed_file = models.FileReference(path=path, md5=md5sum)
                     if installed_file not in installed_files:
                         installed_files.append(installed_file)
                     directories.add(os.path.dirname(path))
@@ -192,7 +192,7 @@ def get_installed_packages(root_dir, distro='debian', detect_licenses=False, **k
             yield package
 
     elif os.path.exists(base_statusd_loc):
-        for root, dirs, files in os.walk(base_statusd_loc):
+        for root, _dirs, files in os.walk(base_statusd_loc):
             for f in files:
                 status_file_loc = os.path.join(root, f)
                 for package in parse_status_file(status_file_loc, distro=distro):
@@ -217,7 +217,7 @@ def build_package(package_data, distro='debian'):
     or None.
     """
     # construct the package
-    package = DebianPackage()
+    package = DebianPackageRecognizer()
     package.namespace = distro
 
     # add debian-specific package 'qualifiers'
@@ -268,7 +268,7 @@ def build_package(package_data, distro='debian'):
 
 def keywords_mapper(keyword, package):
     """
-    Add `section` info as a list of keywords to a DebianPackage.
+    Add `section` info as a list of keywords to a DebianPackageRecognizer.
     """
     package.keywords = [keyword]
     return package
@@ -276,7 +276,7 @@ def keywords_mapper(keyword, package):
 
 def source_packages_mapper(source, package):
     """
-    Add `source` info as a list of `purl`s to a DebianPackage.
+    Add `source` info as a list of `purl`s to a DebianPackageRecognizer.
     """
     source_pkg_purl = PackageURL(
         type=package.type,

@@ -43,7 +43,7 @@ if TRACE:
 
 @attr.s()
 class NugetPackageData(models.PackageData):
-    # file_patterns = ('[Content_Types].xml', '*.nuspec',)
+    # path_patterns = ('[Content_Types].xml', '*.nuspec',)
     filetypes = ('zip archive', 'microsoft ooxml',)
     mimetypes = ('application/zip', 'application/octet-stream',)
     # extensions = ('.nupkg',)
@@ -95,20 +95,20 @@ nuspec_tags = [
 
 
 @attr.s()
-class Nuspec(NugetPackageData, models.PackageDataFile):
+class Nuspec(NugetPackageData, models.DatafileHandler):
 
-    file_patterns = ('*.nuspec',)
+    path_patterns = ('*.nuspec',)
     extensions = ('.nuspec',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and location.endswith('.nuspec')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

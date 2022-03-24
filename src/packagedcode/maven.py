@@ -24,7 +24,6 @@ from pymaven.pom import strip_namespace
 from commoncode import filetype
 from commoncode import fileutils
 from packagedcode import models
-from packagedcode.models import Package
 from packagedcode.utils import combine_expressions
 from packagedcode.utils import normalize_vcs_url
 from packagedcode.utils import VCS_URLS
@@ -64,7 +63,7 @@ class MavenPomPackageData(models.PackageData):
             if not package_data:
                 return manifest_resource
             package_data = package_data[0]
-            package = cls.create(**package_data)
+            package = cls.from_dict(**package_data)
             ns = package.namespace
             name = package.name
             path = 'META-INF/maven/{ns}/{name}/pom.xml'.format(**locals())
@@ -120,7 +119,7 @@ class MavenPomPackageData(models.PackageData):
         return compute_normalized_license(self.declared_license)
 
     @classmethod
-    def extra_key_files(cls):
+    def extra_datafiles(cls):
         return [
             'META-INF/MANIFEST.MF',
             'META-INF/LICENSE',
@@ -283,11 +282,11 @@ class MavenPom(pom.Pom):
         if TRACE:
             logger.debug('MavenPom.__init__: xml_text: {}'.format(xml_text))
 
-        self._pom_data = etree.fromstring(xml_text, parser=pom.POM_PARSER)
+        self._pom_data = etree.fromstring(xml_text, parser=pom.POM_PARSER)  # NOQA
 
         # collect and then remove XML comments from the XML elements tree
         self.comments = self._get_comments()
-        etree.strip_tags(self._pom_data, etree.Comment)
+        etree.strip_tags(self._pom_data, etree.Comment)  # NOQA
 
         # FIXME: we do not use a client for now.
         # There are pending issues at pymaven to address this
@@ -838,7 +837,7 @@ def get_maven_pom(location=None, text=None, check_is_pom=False, extra_properties
     Return a MavenPom object from a POM file at `location` or provided as a
     `text` string.
     """
-    if location and check_is_pom and not PomXml.is_package_data_file(location):
+    if location and check_is_pom and not PomXml.is_datafile(location):
         return
     pom = MavenPom(location, text)
     if not extra_properties:
@@ -999,13 +998,13 @@ class MavenPackage(MavenPomPackageData, models.Package):
 
 
 @attr.s()
-class PomXml(MavenPomPackageData, models.PackageDataFile):
+class PomXml(MavenPomPackageData, models.DatafileHandler):
 
-    file_patterns = ('*.pom', 'pom.xml',)
+    path_patterns = ('*.pom', 'pom.xml',)
     extensions = ('.pom',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at location is highly likely to be a POM.
         """
@@ -1035,7 +1034,7 @@ class PomXml(MavenPomPackageData, models.PackageDataFile):
         if TRACE: logger.debug('is_pom: not a POM based on type: {}: {}'.format(T, location))
 
     @classmethod
-    def recognize(cls, location, text=None, check_is_pom=True, extra_properties=None):
+    def parse(cls, location, text=None, check_is_pom=True, extra_properties=None):
         """
         Yield one or more PomXml objects or None.
 
@@ -1194,7 +1193,7 @@ class MavenRecognizer(object):
             if not filetype.is_file(loc):
                 continue
             # a pom is an xml doc
-            if not PomXml.is_package_data_file(location):
+            if not PomXml.is_datafile(location):
                 continue
 
             if f == 'pom.xml':

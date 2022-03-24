@@ -13,12 +13,9 @@ from packageurl import PackageURL
 from pygmars import Token
 from pygmars.parse import Parser
 from pygments import lex
-from pygments.lexers import GroovyLexer
-import attr
+from pygments.lexers.jvm import GroovyLexer
 
 from packagedcode import models
-from packagedcode.build import BaseBuildManifestPackageData
-
 
 TRACE = False
 
@@ -28,6 +25,30 @@ if TRACE:
     import sys
     logging.basicConfig(stream=sys.stdout)
     logger.setLevel(logging.DEBUG)
+
+
+class BuildGradleHandler(models.DatafileHandler):
+    datasource_id = 'build_gradle'
+    path_patterns = ('*/build.gradle', 'build.gradle.kts',)
+    # TODO: Not sure what the default type should be, change this to something
+    # more appropriate later
+    default_package_type = 'maven'
+    primary_language = 'Java'
+    description = 'Gradle build script'
+
+    @classmethod
+    def parse(cls, location):
+        dependencies = get_dependencies(location)
+        return build_package(cls, dependencies)
+
+    @classmethod
+    def assign_package_to_resources(cls, package, resource, codebase):
+        # TODO: handle complex cases of nested builds with many packages
+        cls.assign_package_to_parent_tree(
+            package=package,
+            resource=resource,
+            codebase=codebase,
+        )
 
 
 grammar = """
@@ -49,6 +70,9 @@ grammar = """
 
 
 def get_tokens(contents):
+    """
+    Yield tuples of (position, Token, value) from lexing a ``contents`` string.
+    """
     for i, (token, value) in enumerate(lex(contents, GroovyLexer())):
         yield i, token, value
 
@@ -62,7 +86,9 @@ def get_pygmar_tokens(contents):
 
 
 def get_parse_tree(build_gradle_location):
-    # Open build.gradle and create a Pygmars parse tree from its contents
+    """
+    Return a Pygmars parse tree from a ``build_gradle_location`` build.gradle
+    """
     with open(build_gradle_location) as f:
         contents = f.read()
     parser = Parser(grammar, trace=0)
@@ -75,11 +101,14 @@ def is_literal_string(string):
 
 def remove_quotes(string):
     """
-    Remove starting and ending quotes from `string`.
+    Remove starting and ending quotes from ``string``.
 
-    If `string` has no starting or ending quotes, return `string`.
+    If ``string`` has no starting or ending quotes, return ``string``.
     """
-    quoted = lambda x: (x.startswith('"') and x.endswith('"')) or (x.startswith("'") and x.endswith("'"))
+    quoted = lambda x: (
+        (x.startswith('"') and x.endswith('"'))
+        or (x.startswith("'") and x.endswith("'"))
+    )
     if quoted:
         return string[1:-1]
     else:
@@ -252,7 +281,7 @@ def get_dependencies(build_gradle_location):
     return get_dependencies_from_parse_tree(parse_tree)
 
 
-def build_package(cls, dependencies):
+def build_package(dependencies):
     package_dependencies = []
     for dependency in dependencies:
         # Ignore collected dependencies that do not have a name
@@ -261,7 +290,7 @@ def build_package(cls, dependencies):
             continue
 
         namespace = dependency.get('namespace', '')
-        version =  dependency.get('version', '')
+        version = dependency.get('version', '')
         scope = dependency.get('scope', '')
         is_runtime = True
         is_optional = False
@@ -272,7 +301,7 @@ def build_package(cls, dependencies):
         package_dependencies.append(
             models.DependentPackage(
                 purl=PackageURL(
-                    type='build.gradle',
+                    type=BuildGradleHandler.default_package_type,
                     namespace=namespace,
                     name=name,
                     version=version
@@ -284,22 +313,9 @@ def build_package(cls, dependencies):
             )
         )
 
-    yield cls(
+    yield models.PackageData(
+        datasource_id=BuildGradleHandler.datasource_id,
+        type=BuildGradleHandler.default_package_type,
         dependencies=package_dependencies,
     )
 
-
-@attr.s()
-class BuildGradle(BaseBuildManifestPackageData, models.PackageDataFile):
-    file_patterns = ('build.gradle',)
-    extensions = ('.gradle',)
-    # TODO: Not sure what the default type should be, change this to something
-    # more appropriate later
-    default_type = 'build.gradle'
-
-    @classmethod
-    def recognize(cls, location):
-        if not cls.is_package_data_file(location):
-            return
-        dependencies = get_dependencies(location)
-        return build_package(cls, dependencies)

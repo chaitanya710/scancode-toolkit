@@ -49,12 +49,12 @@ class CranPackageData(models.PackageData):
 
 
 @attr.s()
-class DescriptionFile(CranPackageData, models.PackageDataFile):
+class DescriptionFile(CranPackageData, models.DatafileHandler):
 
-    file_patterns = ('DESCRIPTION',)
+    path_patterns = ('*/DESCRIPTION',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if `location` path is for a Cran DESCRIPTION file.
         """
@@ -62,7 +62,7 @@ class DescriptionFile(CranPackageData, models.PackageDataFile):
             and fileutils.file_name(location) == 'DESCRIPTION')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

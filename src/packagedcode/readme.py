@@ -50,9 +50,9 @@ class ReadmePackageData(models.PackageData):
         return models.compute_normalized_license(self.declared_license)
 
 @attr.s()
-class ReadmeManifest(ReadmePackageData, models.PackageDataFile):
+class ReadmeManifest(ReadmePackageData, models.DatafileHandler):
 
-    file_patterns = (
+    path_patterns = (
         'README.android',
         'README.chromium',
         'README.facebook',
@@ -61,7 +61,7 @@ class ReadmeManifest(ReadmePackageData, models.PackageDataFile):
     )
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -76,7 +76,7 @@ class ReadmeManifest(ReadmePackageData, models.PackageDataFile):
         )
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -104,7 +104,7 @@ def build_package(cls, readme_manifest):
     package = cls()
 
     for line in readme_manifest.splitlines():
-        key, sep, value = line.partition(':')
+        key, _sep, value = line.partition(':')
 
         if not key or not value:
             continue

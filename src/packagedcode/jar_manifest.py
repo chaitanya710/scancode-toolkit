@@ -10,12 +10,14 @@
 import re
 
 import attr
-
 from commoncode.fileutils import as_posixpath
-from packagedcode.utils import normalize_vcs_url
-from packagedcode.maven import parse_scm_connection
-from packagedcode import models
 
+from packagedcode.maven import parse_scm_connection
+from packagedcode.models import PackageData
+from packagedcode.models import DatafileHandler
+from packagedcode.utils import normalize_vcs_url
+from commoncode import filetype
+from commoncode.fileutils import file_name
 
 """
 A JAR/WAR/EAR and OSGi MANIFEST.MF parser and handler.
@@ -28,89 +30,102 @@ See https://github.com/shevek/jdiagnostics/blob/master/src/main/java/org/anarres
 
 
 @attr.s()
-class JavaArchive(models.PackageData):
-
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip',)
+class JavaJarPackageData(PackageData):
     default_type = 'jar'
     default_primary_language = 'Java'
 
-    @classmethod
-    def get_package_root(cls, manifest_resource, codebase):
-        if manifest_resource.path.lower().endswith('meta-inf/manifest.mf'):
-            # the root is the parent of META-INF
-            return manifest_resource.parent(codebase).parent(codebase)
-        else:
-            return manifest_resource
-
 
 @attr.s()
-class IvyJar(JavaArchive, models.PackageDataFile):
-    file_patterns = ('ivy.xml',)
+class JavaJarManifestRecognizer(DatafileHandler):
+    datatype = JavaJarPackageData
+    path_patterns = ('*/META-INF/MANIFEST.MF',)
+
+    @classmethod
+    def parse(cls, location):
+        sections = parse_manifest(location)
+        if sections:
+            main_section = sections[0]
+            mandata = get_normalized_java_manifest_data(main_section)
+            if mandata:
+                from packagedcode import PACKAGEDATA_CLASS_BY_TYPE
+                klass = PACKAGEDATA_CLASS_BY_TYPE.get()
+                return cls.dataclas(**mandata)
+
+    @classmethod
+    def get_files(cls, package_data, resource, codebase):
+        jar_root = cls.get_jar_root(resource, codebase)
+        if jar_root:
+            for res in jar_root.walk(codebase, topdown=True):
+                yield res.path
+        else:
+            yield resource
+
+    @classmethod
+    def get_jar_root(cls, resource, codebase):
+        if resource.path.lower().endswith('meta-inf/manifest.mf'):
+            # the root is the parent of META-INF
+            return resource.parent(codebase).parent(codebase)
+
+
+class JavaJarRecognizer(DatafileHandler):
+    datatype = JavaJarPackageData
+    # TODO: there are a few rare cases where a .zip can be a JAR.
+    path_patterns = ('*.jar',)
+
+@attr.s()
+class IvyXmlPackageData(PackageData):
     default_type = 'ivy'
     default_primary_language = 'Java'
 
 
-@attr.s()
-class JavaManifest(JavaArchive, models.PackageDataFile):
-    file_patterns = ('META-INF/MANIFEST.MF',)
-    extensions = ('.jar', '.war', '.ear')
-
-    @classmethod
-    def get_manifest_data(cls, location):
-        if cls.is_package_data_file(location):
-            yield parse_manifest(location)
-
-    @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return Trye if the file at location is a Manifest.
-        """
-        return as_posixpath(location).lower().endswith('meta-inf/manifest.mf')
+class IvyXmlRecognizer(DatafileHandler):
+    datatype = IvyXmlPackageData
+    path_patterns = ('*/ivy.xml',)
 
 
 def parse_manifest(location):
     """
     Return a Manifest parsed from the file at `location` or None if this
     cannot be parsed.         """
-    mode = 'r'
-    with open(location, mode) as manifest:
+    with open(location) as manifest:
         return parse_manifest_data(manifest.read())
 
 
-def parse_manifest_data(manifest):
+def parse_manifest_data(manifest_content):
     """
     Return a list of mapping, one for each manifest section (where the first
     entry is the main section) parsed from a `manifest` string.
     """
     # normalize line endings then split each section: they are separated by two LF
-    lines = '\n'.join(manifest.splitlines(False))
-    sections = re.split('\n\n+', lines)
+    lines = '\n'.join(manifest_content.splitlines(False))
+    sections = re.split(r'\n\n+', lines)
     return [parse_section(s) for s in sections]
 
 
 def parse_section(section):
     """
-    Return a mapping of key/values for a manifest `section` string
+    Return a mapping of key/values for a manifest ``section`` string
     """
     data = {}
     for line in section.splitlines(False):
         if not line:
             continue
+
         if not line.startswith(' '):
             # new key/value
             key, _, value = line.partition(': ')
             data[key] = value
+
         else:
             # continuation of the previous value
             data[key] += line[1:]
     return data
 
 
-def get_normalized_package_data(manifest_main_section):
+def get_normalized_java_manifest_data(manifest_mapping):
     """
     Return a mapping of package-like data normalized from a mapping of the
-    `manifest_main_section` data or None.
+    `manifest_mapping` data mapping or None.
 
     Maven Archiver does this:
         Manifest-Version: 1.0
@@ -126,12 +141,12 @@ def get_normalized_package_data(manifest_main_section):
         Implementation-URL: ${project.url}
     See https://maven.apache.org/shared/maven-archiver/examples/manifest.html
     """
-    if not manifest_main_section or len(manifest_main_section) == 1:
+    if not manifest_mapping or len(manifest_mapping) == 1:
         # only a manifest version
         return
 
     def dget(s):
-        v = manifest_main_section.get(s)
+        v = manifest_mapping.get(s)
         if v and v.startswith(('%', '$', '{')):
             v = None
         return v
@@ -333,7 +348,6 @@ def get_normalized_package_data(manifest_main_section):
     #########################
     vcs_url = None
     code_view_url = None
-
 
     m_vcs_url = dget('Module-Origin') or ''
     if m_vcs_url.strip():

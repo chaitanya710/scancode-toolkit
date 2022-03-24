@@ -56,7 +56,6 @@ if TRACE:
 @attr.s()
 class NpmPackageData(models.PackageData):
     # TODO: add new lock files and yarn lock files
-    mimetypes = ('application/x-tar',)
     default_type = 'npm'
     default_primary_language = 'JavaScript'
     default_web_baseurl = 'https://www.npmjs.com/package'
@@ -68,7 +67,28 @@ class NpmPackageData(models.PackageData):
         return manifest_resource.parent(codebase)
 
     @classmethod
-    def ignore_resource(cls, resource, codebase):
+    def get_package_resources(cls, package_root, codebase):
+        """
+        Yield the Resources of an npm Package, ignoring nested mode_modules.
+        """
+        if not cls.ignorable(package_root):
+            yield package_root
+
+        for resource in package_root.walk(
+            codebase, 
+            topdown=True, 
+            ignored=cls.is_ignorable,
+        ):
+            yield resource
+
+    @classmethod
+    def is_ignorable(cls, resource, codebase):
+        """
+        Return True if ``resource`` in ``codebase`` should be ignored.
+        An "ignored" callable for Codebase.walk() to ignore nested "noed_modules"
+        directories that should be reported on their own.
+        """
+        # FIXME: be smarter as this should NOT ignore some tests directory
         return resource.is_dir and resource.name == 'node_modules'
 
     def repository_homepage_url(self, baseurl=default_web_baseurl):
@@ -85,20 +105,19 @@ class NpmPackageData(models.PackageData):
 
 
 @attr.s()
-class PackageJson(NpmPackageData, models.PackageDataFile):
+class PackageJson(NpmPackageData, models.DatafileHandler):
 
-    file_patterns = ('package.json',)
-    extensions = ('.tgz',)
+    path_patterns = ('package.json',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return filetype.is_file(location) and fileutils.file_name(location).lower() == 'package.json'
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -177,9 +196,9 @@ class PackageJson(NpmPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class PackageLockJson(NpmPackageData, models.PackageDataFile):
+class PackageLockJson(NpmPackageData, models.DatafileHandler):
 
-    file_patterns = (
+    path_patterns = (
         'npm-shrinkwrap.json',
         'package-lock.json',
     )
@@ -196,14 +215,14 @@ class PackageLockJson(NpmPackageData, models.PackageDataFile):
             and fileutils.file_name(location).lower() == 'npm-shrinkwrap.json')
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
         return cls.is_package_lock(location) or cls.is_npm_shrinkwrap(location)
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -318,13 +337,13 @@ class PackageLockJson(NpmPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class YarnLockJson(NpmPackageData, models.PackageDataFile):
+class YarnLockJson(NpmPackageData, models.DatafileHandler):
 
-    file_patterns = ('yarn.lock',)
+    path_patterns = ('yarn.lock',)
     extensions = ('.tgz',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -332,7 +351,7 @@ class YarnLockJson(NpmPackageData, models.PackageDataFile):
             and fileutils.file_name(location).lower() == 'yarn.lock')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

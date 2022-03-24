@@ -37,7 +37,6 @@
     "license_expression": null,
     "declared_license": null,
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [],
     "installed_files": [
       {
@@ -496,7 +495,6 @@
     "license_expression": null,
     "declared_license": null,
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [],
     "installed_files": [
       {
@@ -683,7 +681,6 @@
     "license_expression": null,
     "declared_license": null,
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [],
     "installed_files": [
       {
@@ -910,7 +907,6 @@
     "license_expression": null,
     "declared_license": null,
     "notice_text": null,
-    "contains_source_code": null,
     "source_packages": [],
     "installed_files": [],
     "extra_data": {

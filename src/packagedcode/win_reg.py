@@ -309,11 +309,11 @@ def create_relative_file_path(file_path, root_dir, root_prefix=''):
 
 
 @attr.s()
-class InstalledWindowsProgram(models.PackageData, models.PackageDataFile):
+class InstalledWindowsProgram(models.PackageData, models.DatafileHandler):
     default_type = 'windows-program'
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         for installed in reg_parse(location):
             yield installed
 
@@ -364,4 +364,4 @@ class InstalledWindowsProgram(models.PackageData, models.PackageDataFile):
                 continue
             installed_files.append(relative_known_file_path)
 
-        self.installed_files = [models.PackageFile(path=path) for path in sorted(installed_files)]
+        self.installed_files = [models.FileReference(path=path) for path in sorted(installed_files)]

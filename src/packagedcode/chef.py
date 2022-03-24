@@ -11,21 +11,19 @@ import json
 import logging
 
 import attr
+from commoncode import filetype
+from commoncode import fileutils
 from packageurl import PackageURL
 from pygments import highlight
 from pygments.formatter import Formatter
-from pygments.lexers import RubyLexer
+from pygments.lexers.ruby import RubyLexer
 from pygments.token import Token
 
-from commoncode import filetype
-from commoncode import fileutils
 from packagedcode import models
-
 
 """
 Handle Chef cookbooks
 """
-
 
 TRACE = False
 
@@ -37,31 +35,19 @@ if TRACE:
     logger.setLevel(logging.DEBUG)
 
 
-@attr.s()
-class ChefPackageData(models.PackageData):
-    filetypes = ('.tgz',)
-    mimetypes = ('application/x-tar',)
-    default_type = 'chef'
+class ChefCookbookHandler(models.PackageData):
+    datasource_id = 'chef_cookbook_tarball'
+    path_patterns = ('*.tgz',)
+    default_package_type = 'chef'
     default_primary_language = 'Ruby'
-    default_web_baseurl = 'https://supermarket.chef.io/cookbooks'
-    default_download_baseurl = 'https://supermarket.chef.io/cookbooks'
-    default_api_baseurl = 'https://supermarket.chef.io/api/v1'
 
-    @classmethod
-    def get_package_root(cls, manifest_resource, codebase):
-        return manifest_resource.parent(codebase)
-
-    def repository_download_url(self, baseurl=default_download_baseurl):
-        return chef_download_url(self.name, self.version, registry=baseurl)
-
-    def api_data_url(self, baseurl=default_api_baseurl):
-        return chef_api_url(self.name, self.version, registry=baseurl)
+    # TODO: extract and parse and register
 
     def compute_normalized_license(self):
         return models.compute_normalized_license(self.declared_license)
 
 
-def chef_download_url(name, version, registry='https://supermarket.chef.io/cookbooks'):
+def chef_download_url(name, version):
     """
     Return an Chef cookbook download url given a name, version, and base registry URL.
 
@@ -69,8 +55,7 @@ def chef_download_url(name, version, registry='https://supermarket.chef.io/cookb
     >>> c = chef_download_url('seven_zip', '1.0.4')
     >>> assert c == u'https://supermarket.chef.io/cookbooks/seven_zip/versions/1.0.4/download'
     """
-    registry = registry.rstrip('/')
-    return '{registry}/{name}/versions/{version}/download'.format(**locals())
+    return name and version and f'https://supermarket.chef.io/cookbooks/{name}/versions/{version}/download'
 
 
 def chef_api_url(name, version, registry='https://supermarket.chef.io/api/v1'):
@@ -81,8 +66,7 @@ def chef_api_url(name, version, registry='https://supermarket.chef.io/api/v1'):
     >>> c = chef_api_url('seven_zip', '1.0.4')
     >>> assert c == u'https://supermarket.chef.io/api/v1/cookbooks/seven_zip/versions/1.0.4'
     """
-    registry = registry.rstrip('/')
-    return '{registry}/cookbooks/{name}/versions/{version}'.format(**locals())
+    return name and version and f'https://supermarket.chef.io/api/v1/cookbooks/{name}/versions/{version}'
 
 
 class ChefMetadataFormatter(Formatter):
@@ -155,67 +139,57 @@ class ChefMetadataFormatter(Formatter):
         json.dump(metadata, outfile)
 
 
-@attr.s()
-class MetadataJson(ChefPackageData, models.PackageDataFile):
-
-    file_patterns = ('metadata.json',)
-    extensions = ('.json',)
+class ChecfMetadataJsonHandler(models.DatafileHandler):
+    datasource_id = 'chef_cookbook_metadata_json'
+    path_patterns = ('*/metadata.json',)
+    default_package_type = 'chef'
+    default_primary_language = 'Ruby'
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if `location` path is for a Chef metadata.json file.
         The metadata.json is also used in Python installed packages in a 'dist-info'
         directory.
         """
-        return (
-            filetype.is_file(location)
-            and fileutils.file_name(location).lower() == 'metadata.json'
-            and not fileutils.file_name(fileutils.parent_directory(location))
-                .lower().endswith('dist-info')
-        )
+        ipdf = super(ChecfMetadataJsonHandler, cls).is_datafile(location)
+        if ipdf:
+            parent = fileutils.file_name(fileutils.parent_directory(location))
+            return not parent.endswith('dist-info')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
         """
         with io.open(location, encoding='utf-8') as loc:
             package_data = json.load(loc)
-        return build_package(cls, package_data)
+        return build_package(package_data, datasource_id=cls.datasource_id)
 
 
-@attr.s()
-class Metadatarb(ChefPackageData, models.PackageDataFile):
-
-    file_patterns = ('metadata.rb',)
-    extensions = ('.rb',)
-
-    @classmethod
-    def is_package_data_file(cls, location):
-        """
-        Return True if `location` path is for a Chef metadata.json file.
-        The metadata.json is also used in Python installed packages in a 'dist-info'
-        directory.
-        """
-        return (filetype.is_file(location)
-            and fileutils.file_name(location).lower() == 'metadata.rb')
+class ChefMetadatarbHandler(models.DatafileHandler):
+    datasource_id = 'chef_cookbook_metadata_rb'
+    path_patterns = ('*/metadata.rb',)
+    default_package_type = 'chef'
+    default_primary_language = 'Ruby'
 
     @classmethod
-    def recognize(cls, location):
-        """
-        Yield one or more Package manifest objects given a file ``location`` pointing to a
-        package archive, manifest or similar.
-        """
+    def parse(cls, location):
         with io.open(location, encoding='utf-8') as loc:
             file_contents = loc.read()
+
+        # we use a Pygments formatter for parsing lexed Ruby code
         formatted_file_contents = highlight(
-            file_contents, RubyLexer(), ChefMetadataFormatter())
+            file_contents,
+            RubyLexer(),
+            ChefMetadataFormatter()
+        )
         package_data = json.loads(formatted_file_contents)
-        return build_package(cls, package_data)
+        return build_package(package_data, datasource_id=cls.datasource_id)
 
 
++
 @attr.s()
 class ChefPackage(ChefPackageData, models.Package):
     """
@@ -231,10 +205,10 @@ class ChefPackage(ChefPackageData, models.Package):
         ]
 
 
-def build_package(cls, package_data):
+def build_package(package_data, datasource_id):
     """
-    Return a Package object from a package_data mapping (from a metadata.json or
-    similar) or None.
+    Return a PackageData object from a package_data mapping (from a
+    metadata.json or similar) or None.
     """
     name = package_data.get('name')
     version = package_data.get('version')
@@ -249,12 +223,13 @@ def build_package(cls, package_data):
     if maintainer_name or maintainer_email:
         parties.append(
             models.Party(
-                name=maintainer_name or None,
+                name=maintainer_name.strip() or None,
                 role='maintainer',
-                email=maintainer_email or None,
+                email=maintainer_email.strip() or None,
             )
         )
 
+    # TODO: combine descriptions as done elsewhere
     description = package_data.get('description', '') or package_data.get('long_description', '')
     lic = package_data.get('license', '')
     code_view_url = package_data.get('source_url', '')
@@ -273,7 +248,9 @@ def build_package(cls, package_data):
             )
         )
 
-    yield cls(
+    yield models.PackageData(
+        datasource_id=datasource_id,
+        type=ChecfMetadataJsonHandler.default_package_type,
         name=name,
         version=version,
         parties=parties,

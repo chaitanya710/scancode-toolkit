@@ -32,11 +32,11 @@ class TestConda(PackageTester):
 
     def test_condayml_is_package_data_file(self):
         test_file = self.get_test_loc('conda/meta.yaml')
-        assert conda.Condayml.is_package_data_file(test_file)
+        assert conda.Condayml.is_datafile(test_file)
 
     def test_parse(self):
         test_file = self.get_test_loc('conda/meta.yaml')
-        package = conda.Condayml.recognize(test_file)
+        package = conda.Condayml.parse(test_file)
         expected_loc = self.get_test_loc('conda/meta.yaml.expected.json')
         self.check_packages(package, expected_loc, regen=REGEN_TEST_FIXTURES)
 

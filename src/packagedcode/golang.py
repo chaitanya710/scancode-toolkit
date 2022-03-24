@@ -52,13 +52,13 @@ class GolangPackageData(models.PackageData):
 
 
 @attr.s()
-class GoMod(GolangPackageData, models.PackageDataFile):
+class GoMod(GolangPackageData, models.DatafileHandler):
 
-    file_patterns = ('go.mod',)
+    path_patterns = ('*/go.mod',)
     extensions = ('.mod',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -66,7 +66,7 @@ class GoMod(GolangPackageData, models.PackageDataFile):
         return filetype.is_file(location) and filename == 'go.mod'
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.
@@ -115,13 +115,13 @@ class GoMod(GolangPackageData, models.PackageDataFile):
 
 
 @attr.s()
-class GoSum(GolangPackageData, models.PackageDataFile):
+class GoSum(GolangPackageData, models.DatafileHandler):
 
-    file_patterns = ('go.sum',)
+    path_patterns = ('go.sum',)
     extensions = ('.sum',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -129,7 +129,7 @@ class GoSum(GolangPackageData, models.PackageDataFile):
         return filetype.is_file(location) and filename == 'go.sum'
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

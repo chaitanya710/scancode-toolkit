@@ -35,7 +35,7 @@ if TRACE:
 
 @attr.s()
 class FreeBSDPackageData(models.PackageData):
-    file_patterns = ('+COMPACT_MANIFEST',)
+    path_patterns = ('*/+COMPACT_MANIFEST',)
     default_type = 'freebsd'
 
     @classmethod
@@ -47,12 +47,12 @@ class FreeBSDPackageData(models.PackageData):
 
 
 @attr.s()
-class CompactManifest(FreeBSDPackageData, models.PackageDataFile):
+class CompactManifest(FreeBSDPackageData, models.DatafileHandler):
 
-    file_patterns = ('+COMPACT_MANIFEST',)
+    path_patterns = ('*/+COMPACT_MANIFEST',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -60,7 +60,7 @@ class CompactManifest(FreeBSDPackageData, models.PackageDataFile):
             and fileutils.file_name(location).lower() == '+compact_manifest')
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

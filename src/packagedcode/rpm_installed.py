@@ -151,7 +151,7 @@ def build_package(rpm_tags):
             converted.update(handled)
 
     # construct the package: we ignore unknown as we added a few technical fields
-    package = RpmPackageData.create(**converted)
+    package = RpmPackageData.from_dict(**converted)
     return package
 
 ################################################################################
@@ -226,7 +226,7 @@ def dirname_handler(value, current_file, **kwargs):
         if basename == None:
             basename = ''
 
-        rpm_file = models.PackageFile(
+        rpm_file = models.FileReference(
             path=posixpath.join(dirname, basename),
             md5=md5,
         )
@@ -270,7 +270,7 @@ handler_by_name = {
     ############################################################################
 
     ############################################################################
-    # TODO: ignored per-package fields. from here on, these fields are not used yet
+    # TODO: ignored per-package fields. From here on, these fields are not used yet
     ############################################################################
     #  '(unknown)'
     #  'Archivesize'

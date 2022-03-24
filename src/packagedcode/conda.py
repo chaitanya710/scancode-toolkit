@@ -73,13 +73,13 @@ class CondaPackageData(models.PackageData):
         return models.compute_normalized_license(self.declared_license)
 
 @attr.s()
-class Condayml(CondaPackageData, models.PackageDataFile):
+class Condayml(CondaPackageData, models.DatafileHandler):
 
-    file_patterns = ('meta.yaml', 'META.yml',)
+    path_patterns = ('*/meta.yaml', '*/META.yml',)
     extensions = ('.yml', '.yaml',)
 
     @classmethod
-    def is_package_data_file(cls, location):
+    def is_datafile(cls, location):
         """
         Return True if the file at ``location`` is likely a manifest of this type.
         """
@@ -87,7 +87,7 @@ class Condayml(CondaPackageData, models.PackageDataFile):
             and fileutils.file_name(location).lower().endswith(('.yaml', '.yml')))
 
     @classmethod
-    def recognize(cls, location):
+    def parse(cls, location):
         """
         Yield one or more Package manifest objects given a file ``location`` pointing to a
         package archive, manifest or similar.

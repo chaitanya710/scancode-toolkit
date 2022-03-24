@@ -14,7 +14,10 @@ import sys
 import attr
 
 from packagedcode.models import PackageData
-from packagedcode.models import PackageDataFile
+from packagedcode.models import DatafileHandler
+from commoncode import filetype
+from typecode import contenttype
+from commoncode.fileutils import as_posixpath
 
 """
 Miscellaneous package data file formats.
@@ -47,190 +50,298 @@ if TRACE or TRACE_MERGING:
 # yet the purpose and semantics are rather different here
 
 
-@attr.s()
-class JavaJar(PackageData, PackageDataFile):
-    filename_patterns = ('META-INF/MANIFEST.MF',)
-    extensions = ('.jar',)
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip',)
-    default_type = 'jar'
-    default_primary_language = 'Java'
+
+class ZipArchiveParser(DatafileHandler):
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(ZipArchiveParser, cls).is_datafile(location)
+        if ipdf:
+            T = contenttype.get_type(location)
+            return 'zip archive' in T.filetype_file.lower()
 
 
+
 @attr.s()
-class JavaWar(PackageData, PackageDataFile):
-    filename_patterns = ('WEB-INF/web.xml',)
-    extensions = ('.war',)
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip')
+class JavaWarPackageData(PackageData):
     default_type = 'war'
     default_primary_language = 'Java'
 
 
+class JavaWarRecognizer(ZipArchiveParser):
+    datatype = JavaWarPackageData
+    path_patterns = ('*.war',)
+
+
+class JavaWarWebXmlRecognizer(DatafileHandler):
+    datatype = JavaWarPackageData
+    path_patterns = ('*/WEB-INF/web.xml',)
+
+
 @attr.s()
-class JavaEar(PackageData, PackageDataFile):
-    filename_patterns = ('META-INF/application.xml', 'META-INF/ejb-jar.xml')
-    extensions = ('.ear',)
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip')
+class JavaEarPackageData(PackageData):
     default_type = 'ear'
     default_primary_language = 'Java'
 
 
+class JavaEarRecognizer(ZipArchiveParser):
+    datatype = JavaEarPackageData
+    path_patterns = ('*.ear')
+
+
+class JavaEarAppXmlRecognizer(DatafileHandler):
+    datatype = JavaEarPackageData
+    path_patterns = ('*/meta-inf/application.xml', '*/meta-inf/ejb-jar.xml')
+
+
 @attr.s()
-class Axis2Mar(PackageData, PackageDataFile):
+class Axis2MarPackageData(PackageData):
     """Apache Axis2 module"""
-    filename_patterns = ('META-INF/module.xml',)
-    extensions = ('.mar',)
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip')
     default_type = 'axis2'
     default_primary_language = 'Java'
 
 
+class Axis2MarModuleXmlRecognizer(DatafileHandler):
+    datatype = Axis2MarPackageData
+    path_patterns = ('*/meta-inf/module.xml',)
+
+
+class Axis2MarArchiveRecognizer(ZipArchiveParser):
+    datatype = Axis2MarPackageData
+    path_patterns = ('*.mar',)
+
+
 @attr.s()
-class JBossSar(PackageData, PackageDataFile):
-    filename_patterns = ('META-INF/jboss-service.xml',)
-    extensions = ('.sar',)
-    filetypes = ('java archive ', 'zip archive',)
-    mimetypes = ('application/java-archive', 'application/zip')
+class JBossSarPackageData(PackageData):
     default_type = 'jboss'
     default_primary_language = 'Java'
 
 
+class JBossSarRecognizer(ZipArchiveParser):
+    datatype = JBossSarPackageData
+    path_patterns = ('*.sar',)
+
+
+class JBossServiceXmlRecognizer(DatafileHandler):
+    datatype = JBossSarPackageData
+    path_patterns = ('*/meta-inf/jboss-service.xml',)
+
+
 @attr.s()
-class MeteorPackage(PackageData, PackageDataFile):
-    filename_patterns = ('package.js',)
+class MeteorPackageData(PackageData,):
     default_type = 'meteor'
     default_primary_language = 'JavaScript'
 
 
+class MeteorPackageRecognizer(DatafileHandler):
+    datatype = DatafileHandler
+    path_patterns = ('*/package.js',)
+
+
 @attr.s()
-class CpanModule(PackageData, PackageDataFile):
-    filename_patterns = (
+class CpanPackageData(PackageData):
+    default_type = 'cpan'
+    default_primary_language = 'Perl'
+
+
+class CpanPodRecognizer(DatafileHandler):
+    datatype = CpanPackageData
+    path_patterns = (
         '*.pod',
         # TODO: .pm is not a package manifest
         '*.pm',
-        'MANIFEST',
-        'Makefile.PL',
-        'META.yml',
-        'META.json',
+        '*/MANIFEST',
+        '*/Makefile.PL',
+        '*/META.yml',
+        '*/META.json',
         '*.meta',
-        'dist.ini',)
-    # TODO: refine me
-    extensions = ('.tar.gz',)
-    default_type = 'cpan'
-    default_primary_language = 'Perl'
+        '*/dist.ini',
+    )
 
 
 # TODO: refine me: Go packages are a mess but something is emerging
 # TODO: move to and use godeps.py
 @attr.s()
-class Godep(PackageData, PackageDataFile):
-    filename_patterns = ('Godeps',)
+class GodepPackageData(PackageData):
     default_type = 'golang'
     default_primary_language = 'Go'
 
 
+class Godep(PackageData):
+    datatype = GodepPackageData
+    path_patterns = ('*/Godeps',)
+
+
 @attr.s()
-class AndroidApp(PackageData, PackageDataFile):
-    filetypes = ('zip archive',)
-    mimetypes = ('application/zip',)
-    extensions = ('.apk',)
+class AndroidAppPackageData(PackageData):
     default_type = 'android'
     default_primary_language = 'Java'
 
 
+class AndroidAppArchiveRecognizer(ZipArchiveParser):
+    datatype = AndroidAppPackageData
+    path_patterns = ('*.apk',)
+
+
 # see http://tools.android.com/tech-docs/new-build-system/aar-formats
 @attr.s()
-class AndroidLibrary(PackageData, PackageDataFile):
-    filetypes = ('zip archive',)
-    mimetypes = ('application/zip',)
-    # note: Apache Axis also uses AAR extensions for plain Jars.
-    # this could be decided based on internal structure
-    extensions = ('.aar',)
+class AndroidLibraryPackageData(PackageData):
     default_type = 'android-lib'
     default_primary_language = 'Java'
 
 
+class AndroidLibraryRecognizer(ZipArchiveParser):
+    datatype = AndroidLibraryPackageData
+
+    # note: Apache Axis also uses AAR path_patterns for plain Jars.
+    # this could be decided based on internal structure
+    path_patterns = ('*.aar',)
+
 @attr.s()
-class MozillaExtension(PackageData, PackageDataFile):
-    filetypes = ('zip archive',)
-    mimetypes = ('application/zip',)
-    extensions = ('.xpi',)
+class MozillaExtensionPackageData(PackageData):
     default_type = 'mozilla'
     default_primary_language = 'JavaScript'
 
 
+class MozillaExtensionRecognizer(ZipArchiveParser):
+    datatype = MozillaExtensionPackageData
+    path_patterns = ('*.xpi',)
+
+
+
 @attr.s()
-class ChromeExtension(PackageData, PackageDataFile):
-    filetypes = ('data',)
-    mimetypes = ('application/octet-stream',)
-    extensions = ('.crx',)
+class ChromeExtensionPackageData(PackageData):
     default_type = 'chrome'
     default_primary_language = 'JavaScript'
 
 
+class ChromeExtensionRecognizer(DatafileHandler):
+    datatype = ChromeExtensionPackageData
+    path_patterns = ('*.crx',)
+
+
 @attr.s()
-class IOSApp(PackageData, PackageDataFile):
-    filetypes = ('zip archive',)
-    mimetypes = ('application/zip',)
-    extensions = ('.ipa',)
+class IOSAppPackageData(PackageData):
     default_type = 'ios'
     default_primary_language = 'Objective-C'
 
 
 @attr.s()
-class CabPackage(PackageData, PackageDataFile):
-    filetypes = ('microsoft cabinet',)
-    mimetypes = ('application/vnd.ms-cab-compressed',)
-    extensions = ('.cab',)
-    default_type = 'cab'
+class IOSAppIpaRecognizer(DatafileHandler):
+    datatype = IOSAppPackageData
+    path_patterns = ('*.ipa',)
 
 
 @attr.s()
-class InstallShieldPackage(PackageData, PackageDataFile):
-    filetypes = ('installshield',)
-    mimetypes = ('application/x-dosexec',)
-    extensions = ('.exe',)
+class CabArchivePackageData(PackageData):
+    default_type = 'cab'
+    default_primary_language = 'C'
+
+
+class CabArchiveRecognizer(DatafileHandler):
+    datatype = CabArchivePackageData
+    path_patterns = ('*.cab',)
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(CabArchiveRecognizer, cls).is_datafile(location)
+        if ipdf:
+            T = contenttype.get_type(location)
+            return 'microsoft cabinet' in T.filetype_file.lower()
+
+
+@attr.s()
+class InstallShieldPackageData(PackageData):
     default_type = 'installshield'
 
 
+class InstallShieldPackageRecognizer(DatafileHandler):
+    datatype = InstallShieldPackageData
+    path_patterns = ('*.exe',)
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(InstallShieldPackageRecognizer, cls).is_datafile(location)
+        if ipdf:
+            T = contenttype.get_type(location)
+            return 'installshield' in T.filetype_file.lower()
+
+
 @attr.s()
-class NSISInstallerPackage(PackageData, PackageDataFile):
-    filetypes = ('nullsoft installer',)
-    mimetypes = ('application/x-dosexec',)
-    extensions = ('.exe',)
+class NSISInstallerPackageData(PackageData):
     default_type = 'nsis'
 
 
+class NSISInstallerRecognizer(DatafileHandler):
+    datatype = NSISInstallerPackageData
+    path_patterns = ('*.exe',)
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(NSISInstallerRecognizer, cls).is_datafile(location)
+        if ipdf:
+            T = contenttype.get_type(location)
+            return 'nullsoft installer' in T.filetype_file.lower()
+
+
 @attr.s()
-class SharPackage(PackageData, PackageDataFile):
-    filetypes = ('posix shell script',)
-    mimetypes = ('text/x-shellscript',)
-    extensions = ('.sha', '.shar', '.bin',)
+class SharPackagePackageData(PackageData):
     default_type = 'shar'
 
 
+class SharArchiveRecognizer(DatafileHandler):
+    datatype = SharPackagePackageData
+    path_patterns = ('*.shar',)
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(SharArchiveRecognizer, cls).is_datafile(location)
+        if ipdf:
+            T = contenttype.get_type(location)
+            return 'posix shell script' in T.filetype_file.lower()
+
+
 @attr.s()
-class AppleDmgPackage(PackageData, PackageDataFile):
-    filetypes = ('zlib compressed',)
-    mimetypes = ('application/zlib',)
-    extensions = ('.dmg', '.sparseimage',)
+class AppleDmgPackageData(PackageData):
     default_type = 'dmg'
 
 
+class AppleDmgRecognizer(DatafileHandler):
+    datatype = AppleDmgPackageData
+    path_patterns = ('*.dmg', '*.sparseimage',)
+
+
 @attr.s()
-class IsoImagePackage(PackageData, PackageDataFile):
-    filetypes = ('iso 9660 cd-rom', 'high sierra cd-rom',)
-    mimetypes = ('application/x-iso9660-image',)
-    extensions = ('.iso', '.udf', '.img',)
+class IsoImagePackageData(PackageData):
     default_type = 'iso'
 
 
+class IsoImageRecognizer(DatafileHandler):
+    datatype = IsoImagePackageData
+    path_patterns = ('*.iso', '*.udf', '*.img',)
+
+    @classmethod
+    def is_datafile(cls, location):
+        ipdf = super(IsoImageRecognizer, cls).is_datafile(location)
+        if ipdf:
+            fts = contenttype.get_type(location).filetype_file.lower()
+            filetypes = ('iso 9660 cd-rom', 'high sierra cd-rom',)
+            return any(ft in fts for ft in filetypes)
+
+
 @attr.s()
-class SquashfsPackage(PackageData, PackageDataFile):
-    filetypes = ('squashfs',)
+class SquashfsPackageData(PackageData):
     default_type = 'squashfs'
+
+
+@attr.s()
+class SquashfsPackageRecognizer(DatafileHandler):
+    datatype = SquashfsPackageData
+
+    @classmethod
+    def is_datafile(cls, location):
+        if filetype.is_file(location):
+            T = contenttype.get_type(location)
+            return 'squashfs' in T.filetype_file.lower()
 
 # TODO: Add VM images formats(VMDK, OVA, OVF, VDI, etc) and Docker/other containers
